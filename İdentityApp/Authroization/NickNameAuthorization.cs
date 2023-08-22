@@ -1,0 +1,37 @@
+using System.Security.Claims;
+using İdentityAp.Data;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+
+namespace İdentityAp.Authroization
+{
+    public class NicknameAuthorization : AuthorizationHandler<NickNameRequirement>
+    {
+        public UserManager<IdentityUser> _userManager { get; set; }
+        public ApplicationDbContext _db { get; set; }
+
+        public NicknameAuthorization(UserManager<IdentityUser> userManager, ApplicationDbContext db)
+        {
+            _userManager = userManager;
+            _db = db;
+        }
+        protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, NickNameRequirement requirement)
+        {
+            string userid = context.User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            var user = _db.AppUser.FirstOrDefault(u => u.Id == userid);
+            var claims = Task.Run(async () => await _userManager.GetClaimsAsync(user)).Result;
+            var claim = claims.FirstOrDefault(c => c.Type == "FirstName");
+            if (claim != null)
+            {
+                if (claim.Value.ToLower().Contains(requirement.NickName.ToLower()))
+                {
+                    context.Succeed(requirement);
+                    return Task.CompletedTask;
+                }
+            }
+            return Task.CompletedTask;
+        }
+
+        
+    }
+}
